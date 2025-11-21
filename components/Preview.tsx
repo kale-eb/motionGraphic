@@ -193,11 +193,11 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
 
                      // Apply translate on top of original transform
                      const originalTransform = dragData.el.dataset.originalTransform || '';
-                     const translateTransform = `translate(${deltaX}px, ${deltaY}px)`;
+                     const translateTransform = 'translate(' + deltaX + 'px, ' + deltaY + 'px)';
 
                      // Combine: original transform + drag translate
                      dragData.el.style.transform = originalTransform ?
-                       `${originalTransform} ${translateTransform}` :
+                       originalTransform + ' ' + translateTransform :
                        translateTransform;
                  }
               });
