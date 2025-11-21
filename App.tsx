@@ -198,7 +198,13 @@ function App() {
 
             <div className="flex items-center gap-3">
                <button
-                  onClick={() => setIsPlaying(!isPlaying)}
+                  onClick={() => {
+                    // If clicking play when animation finished, restart from beginning
+                    if (!isPlaying && currentTime >= 20) {
+                      setCurrentTime(0);
+                    }
+                    setIsPlaying(!isPlaying);
+                  }}
                   className="p-2 hover:bg-gray-800 rounded-full text-gray-400 hover:text-white transition-colors"
                   title={isPlaying ? "Pause Animation" : "Play Animation"}
                >

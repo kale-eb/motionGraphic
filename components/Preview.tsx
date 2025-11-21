@@ -35,12 +35,33 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, currentTime, or
     const iframe = iframeRef.current;
     if (!iframe || !iframe.contentWindow) return;
 
+    // If scrubbing back to the start (< 0.1s), restart animations first
+    if (currentTime < 0.1) {
+      iframe.contentWindow.postMessage({
+        type: 'RESTART'
+      }, '*');
+    }
+
     // Send scrub command to iframe
     iframe.contentWindow.postMessage({
       type: 'SCRUB',
       time: currentTime
     }, '*');
   }, [currentTime]);
+
+  // Send RESTART message when playback starts from the beginning
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !iframe.contentWindow) return;
+
+    // If playing starts and we're at/near time 0, restart animations
+    // Using < 0.1 to handle both exact 0 and near-0 from scrubbing
+    if (isPlaying && currentTime < 0.1) {
+      iframe.contentWindow.postMessage({
+        type: 'RESTART'
+      }, '*');
+    }
+  }, [isPlaying, currentTime]);
 
   useEffect(() => {
     const doc = iframeRef.current?.contentDocument;
@@ -159,6 +180,30 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, currentTime, or
                       // we want delay of -1.4s (0.6 - 2 = -1.4)
                       const newDelay = originalDelay - time;
                       el.style.animationDelay = newDelay + 's';
+                    }
+                  });
+                }
+
+                if (event.data.type === 'RESTART') {
+                  // Restart all animations from the beginning
+                  const elements = document.querySelectorAll('*');
+                  elements.forEach(el => {
+                    const style = window.getComputedStyle(el);
+                    if (style.animationName && style.animationName !== 'none') {
+                      // Save the current animation property
+                      const animation = el.style.animation || style.animation;
+
+                      // Remove animation to reset it
+                      el.style.animation = 'none';
+
+                      // Force reflow to ensure the browser processes the removal
+                      void el.offsetHeight;
+
+                      // Restore animation (this restarts it from the beginning)
+                      el.style.animation = animation;
+
+                      // Clear any custom animation-delay we set during scrubbing
+                      el.style.animationDelay = '';
                     }
                   });
                 }
