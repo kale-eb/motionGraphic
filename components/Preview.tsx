@@ -35,18 +35,20 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, currentTime, or
     const iframe = iframeRef.current;
     if (!iframe || !iframe.contentWindow) return;
 
-    // If scrubbing back to the start (< 0.1s), restart animations first
-    if (currentTime < 0.1) {
-      iframe.contentWindow.postMessage({
-        type: 'RESTART'
-      }, '*');
-    }
-
-    // Send scrub command to iframe
+    // Always restart animations before scrubbing to any position
+    // This ensures animations can play from wherever you scrub to
     iframe.contentWindow.postMessage({
-      type: 'SCRUB',
-      time: currentTime
+      type: 'RESTART'
     }, '*');
+
+    // Then apply the scrubbed time position
+    // Use setTimeout to ensure restart completes before scrubbing
+    setTimeout(() => {
+      iframe.contentWindow?.postMessage({
+        type: 'SCRUB',
+        time: currentTime
+      }, '*');
+    }, 10);
   }, [currentTime]);
 
   // Send RESTART message when playback starts from the beginning
