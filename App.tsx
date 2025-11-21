@@ -133,8 +133,8 @@ function App() {
       const animationDuration = calculateAnimationDuration(code.css);
       console.log(`Rendering ${animationDuration} seconds of animation`);
 
-      // Call backend render API
-      const response = await fetch('http://localhost:3001/api/render-ffmpeg', {
+      // Call backend render API (uses Puppeteer screencast - simple!)
+      const response = await fetch('http://localhost:3001/api/render', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
