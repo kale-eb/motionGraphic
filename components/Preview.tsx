@@ -90,8 +90,10 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
               let dragData = {
                 el: null,
                 selector: null,
-                shiftX: 0,
-                shiftY: 0
+                startX: 0,
+                startY: 0,
+                elementStartX: 0,
+                elementStartY: 0
               };
 
               // Helper to generate a specific CSS selector
@@ -161,74 +163,73 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
 
                  if (target === document.body || target === document.documentElement) return;
 
-                 // Calculate offset to prevent snapping to center
                  const rect = target.getBoundingClientRect();
-                 const shiftX = e.clientX - rect.left;
-                 const shiftY = e.clientY - rect.top;
 
+                 // Store initial mouse position and element position
                  dragData = {
                    el: target,
                    selector: getUniqueSelector(target),
-                   shiftX,
-                   shiftY
+                   startX: e.clientX,
+                   startY: e.clientY,
+                   elementStartX: rect.left,
+                   elementStartY: rect.top
                  };
 
                  target.classList.remove('interactive-hover');
                  target.classList.add('interactive-active');
 
-                 // Freeze width/height to prevent collapse when switching to absolute
-                 target.style.width = rect.width + 'px';
-                 target.style.height = rect.height + 'px';
-
-                 // FIX: Calculate position relative to the offset parent (containing block)
-                 // instead of viewport to prevent the jump
-                 const offsetParent = target.offsetParent || document.body;
-                 const parentRect = offsetParent.getBoundingClientRect();
-
-                 const relativeLeft = rect.left - parentRect.left;
-                 const relativeTop = rect.top - parentRect.top;
-
-                 // Switch to absolute positioning immediately for drag
-                 target.style.position = 'absolute';
-                 target.style.left = relativeLeft + 'px';
-                 target.style.top = relativeTop + 'px';
-                 target.style.margin = '0';
-                 // Remove transforms that might offset position during drag (we'll reset them in CSS later)
-                 target.style.transform = 'none';
+                 // Store original transform to add drag offset to it
+                 const computedStyle = window.getComputedStyle(target);
+                 target.dataset.originalTransform = computedStyle.transform !== 'none' ? computedStyle.transform : '';
               });
 
               window.addEventListener('mousemove', (e) => {
                  if (dragData.el) {
                      e.preventDefault();
-                     
-                     // Move element locally (high performance, no react render)
-                     const newX = e.clientX - dragData.shiftX;
-                     const newY = e.clientY - dragData.shiftY;
-                     
-                     dragData.el.style.left = newX + 'px';
-                     dragData.el.style.top = newY + 'px';
+
+                     // Calculate drag offset from start position
+                     const deltaX = e.clientX - dragData.startX;
+                     const deltaY = e.clientY - dragData.startY;
+
+                     // Apply translate on top of original transform
+                     const originalTransform = dragData.el.dataset.originalTransform || '';
+                     const translateTransform = `translate(${deltaX}px, ${deltaY}px)`;
+
+                     // Combine: original transform + drag translate
+                     dragData.el.style.transform = originalTransform ?
+                       `${originalTransform} ${translateTransform}` :
+                       translateTransform;
                  }
               });
 
-              window.addEventListener('mouseup', () => {
+              window.addEventListener('mouseup', (e) => {
                   if (dragData.el) {
                       const el = dragData.el;
                       el.classList.remove('interactive-active');
                       el.classList.add('interactive-hover');
 
-                      // FIX: Calculate final percentages relative to the containing block
-                      // instead of viewport to prevent snap
-                      const rect = el.getBoundingClientRect();
+                      // Calculate final position after drag
+                      const deltaX = e.clientX - dragData.startX;
+                      const deltaY = e.clientY - dragData.startY;
+
+                      const finalX = dragData.elementStartX + deltaX;
+                      const finalY = dragData.elementStartY + deltaY;
+
+                      // Calculate percentages relative to the containing block
                       const offsetParent = el.offsetParent || document.body;
                       const parentRect = offsetParent.getBoundingClientRect();
 
-                      const relativeLeft = rect.left - parentRect.left;
-                      const relativeTop = rect.top - parentRect.top;
+                      const relativeLeft = finalX - parentRect.left;
+                      const relativeTop = finalY - parentRect.top;
 
                       const xPercent = (relativeLeft / parentRect.width) * 100;
                       const yPercent = (relativeTop / parentRect.height) * 100;
 
-                      // Only send message at the END of drag to prevent re-render loops
+                      // Clear the transform we added during drag
+                      el.style.transform = '';
+                      delete el.dataset.originalTransform;
+
+                      // Send message to update CSS
                       window.parent.postMessage({
                           type: 'ELEMENT_DRAG_END',
                           selector: dragData.selector,
@@ -236,7 +237,7 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
                           y: yPercent
                       }, '*');
 
-                      dragData = { el: null, selector: null, shiftX: 0, shiftY: 0 };
+                      dragData = { el: null, selector: null, startX: 0, startY: 0, elementStartX: 0, elementStartY: 0 };
                   }
               });
               
