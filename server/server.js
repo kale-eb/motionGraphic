@@ -43,10 +43,38 @@ app.post('/api/render-remotion', async (req, res) => {
     // Create a temporary composition file with the HTML/CSS
     const compositionPath = join(tempDir, 'TempComposition.jsx');
     const compositionCode = `
-import React from 'react';
-import { AbsoluteFill } from 'remotion';
+import React, { useEffect } from 'react';
+import { AbsoluteFill, useCurrentFrame, useVideoConfig, continueRender, delayRender } from 'remotion';
 
 export const HTMLAnimation = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const currentTime = frame / fps; // Current time in seconds
+
+  // Wait for fonts to load before rendering
+  useEffect(() => {
+    const handle = delayRender();
+
+    // Wait for all fonts to be ready
+    document.fonts.ready.then(() => {
+      continueRender(handle);
+    });
+  }, []);
+
+  useEffect(() => {
+    // Set CSS animation playback position based on current frame
+    const elements = document.querySelectorAll('*');
+    elements.forEach(el => {
+      const animations = el.getAnimations();
+      animations.forEach(animation => {
+        // Pause the animation
+        animation.pause();
+        // Set to current time (in milliseconds)
+        animation.currentTime = currentTime * 1000;
+      });
+    });
+  }, [currentTime]);
+
   return (
     <AbsoluteFill style={{ backgroundColor: 'transparent' }}>
       <style dangerouslySetInnerHTML={{ __html: \`${css.replace(/`/g, '\\`')}\` }} />
