@@ -178,7 +178,7 @@ app.post('/api/render-ffmpeg', async (req, res) => {
     const page = await browser.newPage();
     await page.setViewport({ width, height });
 
-    // Create full HTML document with animation control
+    // Create full HTML document - let animations play naturally
     const fullHTML = `
       <!DOCTYPE html>
       <html>
@@ -192,10 +192,6 @@ app.post('/api/render-ffmpeg', async (req, res) => {
             height: ${height}px;
             overflow: hidden;
           }
-          /* Pause all animations by default */
-          *, *::before, *::after {
-            animation-play-state: paused !important;
-          }
           ${css}
         </style>
       </head>
@@ -207,66 +203,58 @@ app.post('/api/render-ffmpeg', async (req, res) => {
 
     await page.setContent(fullHTML);
     await page.evaluate(() => document.fonts.ready);
+
+    // Wait for initial layout
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    console.log('Capturing frames...');
+    console.log('Recording animation in real-time...');
 
     const totalFrames = duration * fps;
+    const frameInterval = 1000 / fps; // milliseconds per frame
+
+    // Start capturing frames
+    const startTime = Date.now();
 
     for (let frame = 0; frame < totalFrames; frame++) {
-      const currentTime = frame / fps;
+      const targetTime = frame * frameInterval;
+      const elapsed = Date.now() - startTime;
 
-      // Scrub animations to current time using negative delay
-      await page.evaluate((time) => {
-        const elements = document.querySelectorAll('*');
-        elements.forEach(el => {
-          const style = window.getComputedStyle(el);
-          if (style.animationName && style.animationName !== 'none') {
-            // Get original delay
-            const delayStr = style.animationDelay;
-            let originalDelay = 0;
-            if (delayStr) {
-              if (delayStr.endsWith('ms')) {
-                originalDelay = parseFloat(delayStr) / 1000;
-              } else if (delayStr.endsWith('s')) {
-                originalDelay = parseFloat(delayStr);
-              }
-            }
-            // Set delay to scrub to current time
-            const newDelay = originalDelay - time;
-            el.style.animationDelay = newDelay + 's';
-          }
-        });
-      }, currentTime);
-
-      // Wait a bit for styles to apply
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Wait until we reach the target time for this frame
+      if (elapsed < targetTime) {
+        await new Promise(resolve => setTimeout(resolve, targetTime - elapsed));
+      }
 
       // Capture frame
       const frameNumber = frame.toString().padStart(6, '0');
       await page.screenshot({
         path: join(framesDir, `frame-${frameNumber}.png`),
-        type: 'png'
+        type: 'png',
+        omitBackground: true // Preserve transparency
       });
 
       if (frame % 30 === 0) {
-        console.log(`Captured frame ${frame}/${totalFrames}`);
+        console.log(`Captured frame ${frame}/${totalFrames} (${(frame/totalFrames*100).toFixed(1)}%)`);
       }
     }
+
+    console.log('Frame capture complete');
 
     await browser.close();
     browser = null;
 
-    console.log('All frames captured, encoding with ffmpeg...');
+    console.log('Encoding video with ffmpeg (preserving alpha channel)...');
 
-    // Use ffmpeg to encode frames to webm
+    // Use ffmpeg to encode frames to webm with alpha support
     const ffmpegProcess = spawn('ffmpeg', [
       '-framerate', fps.toString(),
       '-i', join(framesDir, 'frame-%06d.png'),
       '-c:v', 'libvpx-vp9',
-      '-pix_fmt', 'yuva420p',
-      '-b:v', '2M',
-      '-crf', '30',
+      '-pix_fmt', 'yuva420p',  // YUV with alpha channel
+      '-auto-alt-ref', '0',     // Required for alpha
+      '-b:v', '0',              // Use CRF for quality
+      '-crf', '23',             // Good quality (lower = better, 23 is default)
+      '-deadline', 'good',      // Balance speed/quality
+      '-cpu-used', '2',         // Encoding speed (0-5, lower = slower/better)
       '-y',
       videoPath
     ]);
