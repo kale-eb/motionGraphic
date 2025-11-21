@@ -67,14 +67,15 @@ export const createChatSession = (currentCode: CodeState) => {
 
       ANIMATION CONSTRAINTS:
       - This is a TIMELINE-BASED motion graphics tool (like After Effects), NOT a looping animation system
-      - The timeline is 20 seconds long
+      - The timeline duration is dynamic based on your animations (typical range: 5-30 seconds)
       - All animations MUST use 'animation-fill-mode: forwards' or include 'forwards' in the animation shorthand
       - NEVER use 'infinite' or looping animations - all animations should play exactly ONCE
       - Use 'animation-delay' to sequence animations along the timeline (e.g., delay: 2s means it starts at 2 seconds)
       - Use 'animation-duration' to control how long each animation takes
       - Set 'animation-iteration-count: 1' explicitly if needed, or use the shorthand with just duration and delay
-      - Design animations to compose into a cohesive motion graphics sequence from 0-20 seconds
+      - Design animations to compose into a cohesive motion graphics sequence
       - Elements should animate in and hold their final state (via forwards), not loop or reset
+      - The video export duration is automatically calculated as: max(delay + duration) across all animations
 
       CSS POSITIONING & STRUCTURE REQUIREMENTS (CRITICAL):
       - NEVER use 'Infinity', '-Infinity', 'NaN', or any invalid numeric values in CSS

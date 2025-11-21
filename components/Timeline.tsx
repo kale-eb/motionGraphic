@@ -7,16 +7,17 @@ interface TimelineProps {
   onUpdateCss: (newCss: string) => void;
   currentTime?: number;
   onSeek?: (time: number) => void;
+  maxTime?: number;
 }
 
-const Timeline: React.FC<TimelineProps> = ({ css, onUpdateCss, currentTime = 0, onSeek }) => {
+const Timeline: React.FC<TimelineProps> = ({ css, onUpdateCss, currentTime = 0, onSeek, maxTime = 20 }) => {
   const tracks = useMemo(() => parseAnimationTracks(css), [css]);
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
   const timelineScrollRef = useRef<HTMLDivElement>(null);
 
   // Scale: 1 second = 100px
   const PX_PER_SEC = 100;
-  const MAX_TIME = 20;
+  const MAX_TIME = maxTime;
 
   // Auto-scroll to keep playhead in view when playing (but not when user is dragging)
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Play, Pause, Video, Code2, Eye, Download, Film, Smartphone, Monitor, LayoutTemplate } from 'lucide-react';
 import ChatInterface from './components/ChatInterface';
 import CodeEditor from './components/CodeEditor';
@@ -7,7 +7,7 @@ import Timeline from './components/Timeline';
 import { INITIAL_CSS, INITIAL_HTML } from './constants';
 import { Message, Sender, CodeState, UpdateCodeArgs } from './types';
 import { createChatSession, sendMessageToGemini } from './services/geminiService';
-import { updateCssProperty } from './utils/cssParser';
+import { updateCssProperty, calculateAnimationDuration } from './utils/cssParser';
 
 function App() {
   // State
@@ -20,6 +20,11 @@ function App() {
   const [chatSession, setChatSession] = useState<any>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
+
+  // Calculate dynamic max time based on animations in CSS
+  const maxTime = useMemo(() => {
+    return calculateAnimationDuration(code.css);
+  }, [code.css]);
 
   const handleSeek = (time: number) => {
     setCurrentTime(time);
@@ -40,10 +45,10 @@ function App() {
 
       setCurrentTime(prev => {
         const newTime = prev + deltaTime;
-        // Stop at 20 seconds (MAX_TIME)
-        if (newTime >= 20) {
+        // Stop at max time
+        if (newTime >= maxTime) {
           setIsPlaying(false);
-          return 20;
+          return maxTime;
         }
         return newTime;
       });
@@ -56,7 +61,7 @@ function App() {
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [isPlaying]);
+  }, [isPlaying, maxTime]);
 
   // Initialize Chat Session
   useEffect(() => {
@@ -124,6 +129,10 @@ function App() {
     setIsRendering(true);
 
     try {
+      // Calculate actual animation duration from CSS
+      const animationDuration = calculateAnimationDuration(code.css);
+      console.log(`Rendering ${animationDuration} seconds of animation`);
+
       // Call backend render API
       const response = await fetch('http://localhost:3001/api/render-ffmpeg', {
         method: 'POST',
@@ -133,7 +142,7 @@ function App() {
         body: JSON.stringify({
           html: code.html,
           css: code.css,
-          duration: 20,
+          duration: animationDuration,
           fps: 30,
           width: orientation === 'landscape' ? 1920 : 1080,
           height: orientation === 'landscape' ? 1080 : 1920
@@ -237,7 +246,7 @@ function App() {
                <button
                   onClick={() => {
                     // If clicking play when animation finished, restart from beginning
-                    if (!isPlaying && currentTime >= 20) {
+                    if (!isPlaying && currentTime >= maxTime) {
                       setCurrentTime(0);
                     }
                     setIsPlaying(!isPlaying);
@@ -311,6 +320,7 @@ function App() {
                     onUpdateCss={updateCss}
                     currentTime={currentTime}
                     onSeek={handleSeek}
+                    maxTime={maxTime}
                 />
             )}
         </main>

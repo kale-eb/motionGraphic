@@ -227,3 +227,22 @@ export const forceNonLoopingAnimations = (css: string): string => {
 
     return newCss;
 };
+
+/**
+ * Calculate the total duration needed to render all animations
+ * Returns the maximum end time (delay + duration) across all animations
+ * Adds a small buffer to ensure animations complete
+ */
+export const calculateAnimationDuration = (css: string): number => {
+    const tracks = parseAnimationTracks(css);
+
+    if (tracks.length === 0) {
+        return 5; // Default to 5 seconds if no animations found
+    }
+
+    // Find the maximum end time (delay + duration)
+    const maxEndTime = Math.max(...tracks.map(track => track.delay + track.duration));
+
+    // Add 0.5 second buffer to ensure animations complete smoothly
+    return Math.ceil(maxEndTime + 0.5);
+};
