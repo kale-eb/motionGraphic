@@ -141,9 +141,24 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, currentTime, or
                   elements.forEach(el => {
                     const style = window.getComputedStyle(el);
                     if (style.animationName && style.animationName !== 'none') {
-                      // Scrub by setting animation-delay to negative value
-                      // This makes the animation jump to that point
-                      el.style.animationDelay = '-' + time + 's';
+                      // Get original animation delay from computed style
+                      // animationDelay is in format like "0.2s" or "200ms"
+                      const delayStr = style.animationDelay;
+                      let originalDelay = 0;
+
+                      if (delayStr) {
+                        if (delayStr.endsWith('ms')) {
+                          originalDelay = parseFloat(delayStr) / 1000;
+                        } else if (delayStr.endsWith('s')) {
+                          originalDelay = parseFloat(delayStr);
+                        }
+                      }
+
+                      // Calculate new delay: original delay - current time
+                      // Example: if animation starts at 0.6s and we scrub to 2s,
+                      // we want delay of -1.4s (0.6 - 2 = -1.4)
+                      const newDelay = originalDelay - time;
+                      el.style.animationDelay = newDelay + 's';
                     }
                   });
                 }
