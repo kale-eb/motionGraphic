@@ -1,0 +1,5 @@
+{
+  "name": "MotionGen AI",
+  "description": "A platform for AI-generated HTML/CSS motion graphics powered by Gemini 3 Pro.",
+  "requestFramePermissions": []
+}
