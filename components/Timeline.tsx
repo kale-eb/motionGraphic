@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { Clock, AlertCircle } from 'lucide-react';
 import { parseAnimationTracks, updateAnimationTiming } from '../utils/cssParser';
 
@@ -12,10 +12,30 @@ interface TimelineProps {
 const Timeline: React.FC<TimelineProps> = ({ css, onUpdateCss, currentTime = 0, onSeek }) => {
   const tracks = useMemo(() => parseAnimationTracks(css), [css]);
   const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
 
   // Scale: 1 second = 100px
   const PX_PER_SEC = 100;
-  const MAX_TIME = 20; 
+  const MAX_TIME = 20;
+
+  // Auto-scroll to keep playhead in view when playing (but not when user is dragging)
+  useEffect(() => {
+    if (!isDraggingPlayhead && timelineScrollRef.current) {
+      const scrollContainer = timelineScrollRef.current;
+      const playheadPosition = currentTime * PX_PER_SEC;
+      const containerWidth = scrollContainer.clientWidth;
+      const scrollLeft = scrollContainer.scrollLeft;
+
+      // Check if playhead is outside the visible area
+      if (playheadPosition < scrollLeft || playheadPosition > scrollLeft + containerWidth - 100) {
+        // Scroll to center the playhead
+        scrollContainer.scrollTo({
+          left: playheadPosition - containerWidth / 2,
+          behavior: 'smooth'
+        });
+      }
+    }
+  }, [currentTime, isDraggingPlayhead]); 
 
   const handleMouseDown = (e: React.MouseEvent, trackIndex: number, type: 'move' | 'resize') => {
       e.preventDefault();
@@ -114,7 +134,7 @@ const Timeline: React.FC<TimelineProps> = ({ css, onUpdateCss, currentTime = 0, 
         </div>
 
         {/* Timeline Area */}
-        <div className="flex-1 relative overflow-x-auto overflow-y-auto bg-gray-950/50 custom-scrollbar">
+        <div ref={timelineScrollRef} className="flex-1 relative overflow-x-auto overflow-y-auto bg-gray-950/50 custom-scrollbar">
            {/* Time Markers */}
            <div className="absolute top-0 left-0 h-full pointer-events-none z-0" style={{ width: `${MAX_TIME * PX_PER_SEC}px` }}>
                {Array.from({ length: MAX_TIME + 1 }).map((_, i) => (
