@@ -107,13 +107,14 @@ registerRoot(RemotionRoot);
       serveUrl: bundleLocation,
       codec: 'vp9',
       outputLocation: outputPath,
+      imageFormat: 'png', // Required for transparency
+      pixelFormat: 'yuva420p', // Preserve alpha channel
       onProgress: ({ progress }) => {
         console.log(`Rendering: ${Math.round(progress * 100)}%`);
       },
       chromiumOptions: {
         enableMultiProcessOnLinux: true,
       },
-      pixelFormat: 'yuva420p', // Preserve alpha channel
     });
 
     console.log('Render complete, sending file...');
