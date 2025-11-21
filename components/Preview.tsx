@@ -65,7 +65,13 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
               /* UI for interactivity */
               .interactive-hover {
                  outline: 2px dashed #3b82f6;
-                 cursor: grab !important; /* Force grab cursor over text */
+                 cursor: grab !important;
+                 z-index: 10000;
+                 position: relative;
+              }
+              .interactive-hover-disabled {
+                 outline: 2px dashed #ef4444;
+                 cursor: not-allowed !important;
                  z-index: 10000;
                  position: relative;
               }
@@ -73,6 +79,20 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
                  outline: 2px solid #3b82f6;
                  cursor: grabbing !important;
                  z-index: 10000;
+              }
+
+              /* Tooltip for when animations are playing */
+              .drag-tooltip {
+                position: fixed;
+                background: rgba(0, 0, 0, 0.9);
+                color: #fbbf24;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-size: 13px;
+                pointer-events: none;
+                z-index: 100000;
+                white-space: nowrap;
+                border: 1px solid #fbbf24;
               }
             </style>
             <!-- User CSS (updatable) -->
@@ -87,6 +107,13 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
           <body>
             ${html}
             <script>
+              // Helper to check if animations are currently playing
+              function areAnimationsPlaying() {
+                // Check if the animation-control style is active (pausing animations)
+                const animControlStyle = document.getElementById('animation-control');
+                return !animControlStyle || animControlStyle.textContent.trim() === '';
+              }
+
               let dragData = {
                 el: null,
                 selector: null,
@@ -95,6 +122,7 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
                 elementStartX: 0,
                 elementStartY: 0
               };
+              let tooltip = null;
 
               // Helper to generate a specific CSS selector
               function getUniqueSelector(el) {
@@ -146,24 +174,62 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
                  if (dragData.el) return;
                  let target = e.target;
                  if (target === document.body || target === document.documentElement) return;
-                 
-                 target.classList.add('interactive-hover');
+
+                 if (areAnimationsPlaying()) {
+                   // Animation is playing - show disabled state and tooltip
+                   target.classList.add('interactive-hover-disabled');
+
+                   // Create tooltip
+                   if (!tooltip) {
+                     tooltip = document.createElement('div');
+                     tooltip.className = 'drag-tooltip';
+                     tooltip.textContent = '⏸ Pause animation to move elements';
+                     document.body.appendChild(tooltip);
+                   }
+
+                   // Position tooltip near cursor
+                   const rect = target.getBoundingClientRect();
+                   tooltip.style.left = rect.left + 'px';
+                   tooltip.style.top = (rect.bottom + 10) + 'px';
+                 } else {
+                   // Animation is paused - allow dragging
+                   target.classList.add('interactive-hover');
+                 }
               });
 
               document.body.addEventListener('mouseout', (e) => {
-                 if (dragData.el) return; // Don't remove hover if dragging
+                 if (dragData.el) return;
                  let target = e.target;
-                 if (target) target.classList.remove('interactive-hover');
+                 if (target) {
+                   target.classList.remove('interactive-hover');
+                   target.classList.remove('interactive-hover-disabled');
+                 }
+
+                 // Remove tooltip
+                 if (tooltip) {
+                   tooltip.remove();
+                   tooltip = null;
+                 }
               });
 
               document.body.addEventListener('mousedown', (e) => {
                  let target = e.target;
-                 // Prevent default to stop image ghosting / text selection
-                 e.preventDefault();
 
                  if (target === document.body || target === document.documentElement) return;
 
+                 // BLOCK dragging if animation is playing
+                 if (areAnimationsPlaying()) {
+                   e.preventDefault();
+                   return;
+                 }
+
+                 // Prevent default to stop image ghosting / text selection
+                 e.preventDefault();
+
+                 // Get current position
                  const rect = target.getBoundingClientRect();
+                 const offsetParent = target.offsetParent || document.body;
+                 const parentRect = offsetParent.getBoundingClientRect();
 
                  // Store initial mouse position and element position
                  dragData = {
@@ -178,9 +244,15 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
                  target.classList.remove('interactive-hover');
                  target.classList.add('interactive-active');
 
-                 // Store original transform to add drag offset to it
-                 const computedStyle = window.getComputedStyle(target);
-                 target.dataset.originalTransform = computedStyle.transform !== 'none' ? computedStyle.transform : '';
+                 // Convert to absolute positioning at current location
+                 const relativeLeft = rect.left - parentRect.left;
+                 const relativeTop = rect.top - parentRect.top;
+
+                 target.style.position = 'absolute';
+                 target.style.left = relativeLeft + 'px';
+                 target.style.top = relativeTop + 'px';
+                 target.style.margin = '0';
+                 target.style.transform = 'none';
               });
 
               window.addEventListener('mousemove', (e) => {
@@ -191,14 +263,16 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
                      const deltaX = e.clientX - dragData.startX;
                      const deltaY = e.clientY - dragData.startY;
 
-                     // Apply translate on top of original transform
-                     const originalTransform = dragData.el.dataset.originalTransform || '';
-                     const translateTransform = 'translate(' + deltaX + 'px, ' + deltaY + 'px)';
+                     // Calculate new position
+                     const offsetParent = dragData.el.offsetParent || document.body;
+                     const parentRect = offsetParent.getBoundingClientRect();
 
-                     // Combine: original transform + drag translate
-                     dragData.el.style.transform = originalTransform ?
-                       originalTransform + ' ' + translateTransform :
-                       translateTransform;
+                     const newX = dragData.elementStartX + deltaX - parentRect.left;
+                     const newY = dragData.elementStartY + deltaY - parentRect.top;
+
+                     // Update position directly
+                     dragData.el.style.left = newX + 'px';
+                     dragData.el.style.top = newY + 'px';
                  }
               });
 
