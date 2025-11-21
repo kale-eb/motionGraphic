@@ -1,11 +1,10 @@
 export const INITIAL_HTML = `
-<div class="container">
-  <div class="orbit">
-    <div class="planet"></div>
-    <div class="planet"></div>
-    <div class="planet"></div>
-  </div>
-  <div class="core"></div>
+<div class="scene">
+  <h1 class="title">MotionGen</h1>
+  <p class="subtitle">Create Amazing Animations</p>
+  <div class="shape shape-1"></div>
+  <div class="shape shape-2"></div>
+  <div class="shape shape-3"></div>
 </div>
 `;
 
@@ -16,66 +15,92 @@ body {
   justify-content: center;
   align-items: center;
   height: 100vh;
-  background-color: #000;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   overflow: hidden;
+  font-family: system-ui, -apple-system, sans-serif;
 }
 
-.container {
+.scene {
   position: relative;
-  width: 300px;
-  height: 300px;
+  width: 100%;
+  height: 100%;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
 }
 
-.core {
-  width: 50px;
-  height: 50px;
-  background: radial-gradient(circle, #fff, #4f46e5);
-  border-radius: 50%;
-  box-shadow: 0 0 20px #4f46e5;
-  z-index: 10;
+.title {
+  font-size: 4rem;
+  font-weight: bold;
+  color: white;
+  margin: 0;
+  opacity: 0;
+  transform: translateY(30px);
+  animation: fadeInUp 1s ease-out 1 forwards;
 }
 
-.orbit {
+.subtitle {
+  font-size: 1.5rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 1rem 0 0 0;
+  opacity: 0;
+  animation: fadeIn 1s ease-out 1.2s 1 forwards;
+}
+
+.shape {
   position: absolute;
-  width: 200px;
-  height: 200px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
-  animation: spin 4s linear 1;
+  opacity: 0;
 }
 
-.planet {
-  position: absolute;
-  top: -10px;
-  left: 50%;
-  width: 20px;
-  height: 20px;
-  background: #a78bfa;
-  border-radius: 50%;
-  box-shadow: 0 0 15px #a78bfa;
+.shape-1 {
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.2);
+  top: 20%;
+  left: 20%;
+  animation: scaleIn 0.8s ease-out 2s 1 forwards;
 }
 
-.planet:nth-child(2) {
-  top: 50%;
-  left: 100%;
-  transform: translate(-50%, -50%);
-  background: #34d399;
-  box-shadow: 0 0 15px #34d399;
+.shape-2 {
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.15);
+  bottom: 30%;
+  right: 25%;
+  animation: scaleIn 0.8s ease-out 2.5s 1 forwards;
 }
 
-.planet:nth-child(3) {
-  top: 50%;
-  left: 0;
-  transform: translate(-50%, -50%);
-  background: #f472b6;
-  box-shadow: 0 0 15px #f472b6;
+.shape-3 {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.1);
+  top: 60%;
+  left: 15%;
+  animation: scaleIn 0.8s ease-out 3s 1 forwards;
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+  from {
+    transform: scale(0);
+  }
 }
 `;

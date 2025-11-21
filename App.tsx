@@ -27,6 +27,37 @@ function App() {
     setIsPlaying(false);
   };
 
+  // Animate playhead when playing
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    let animationFrameId: number;
+    let lastTime = performance.now();
+
+    const animate = (time: number) => {
+      const deltaTime = (time - lastTime) / 1000; // Convert to seconds
+      lastTime = time;
+
+      setCurrentTime(prev => {
+        const newTime = prev + deltaTime;
+        // Stop at 20 seconds (MAX_TIME)
+        if (newTime >= 20) {
+          setIsPlaying(false);
+          return 20;
+        }
+        return newTime;
+      });
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animationFrameId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isPlaying]);
+
   // Initialize Chat Session
   useEffect(() => {
     try {
