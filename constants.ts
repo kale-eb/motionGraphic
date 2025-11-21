@@ -44,7 +44,7 @@ body {
   height: 200px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
-  animation: spin 4s linear infinite;
+  animation: spin 4s linear 1;
 }
 
 .planet {

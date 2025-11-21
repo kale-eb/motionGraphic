@@ -216,3 +216,14 @@ export const updateAnimationTiming = (css: string, selector: string, duration: n
     newCss = updateCssProperty(newCss, selector, 'animation-delay', `${delay.toFixed(2)}s`);
     return newCss;
 };
+
+// Force all animations to play once (remove 'infinite', set iteration-count to 1)
+export const forceNonLoopingAnimations = (css: string): string => {
+    // Replace 'infinite' keyword with '1' in animation shorthand
+    let newCss = css.replace(/animation:\s*([^;{]+\s+)infinite(\s|;|$)/gi, 'animation: $1 1$2');
+
+    // Also handle animation-iteration-count property specifically
+    newCss = newCss.replace(/animation-iteration-count:\s*infinite\s*(;|$)/gi, 'animation-iteration-count: 1$1');
+
+    return newCss;
+};

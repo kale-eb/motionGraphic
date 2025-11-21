@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, Pause, Video, Code2, Eye, Download, Film, Smartphone, Monitor, LayoutTemplate } from 'lucide-react';
+import { Play, Pause, Video, Code2, Eye, Download, Film, Smartphone, Monitor, LayoutTemplate, Repeat } from 'lucide-react';
 import ChatInterface from './components/ChatInterface';
 import CodeEditor from './components/CodeEditor';
 import Preview from './components/Preview';
@@ -14,6 +14,7 @@ function App() {
   const [code, setCode] = useState<CodeState>({ html: INITIAL_HTML, css: INITIAL_CSS });
   const [messages, setMessages] = useState<Message[]>([]);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [loopEnabled, setLoopEnabled] = useState(false);
   const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
   const [isProcessing, setIsProcessing] = useState(false);
   const [chatSession, setChatSession] = useState<any>(null);
@@ -159,12 +160,19 @@ function App() {
             </div>
 
             <div className="flex items-center gap-3">
-               <button 
+               <button
                   onClick={() => setIsPlaying(!isPlaying)}
                   className="p-2 hover:bg-gray-800 rounded-full text-gray-400 hover:text-white transition-colors"
                   title={isPlaying ? "Pause Animation" : "Play Animation"}
                >
                    {isPlaying ? <Pause size={20} /> : <Play size={20} />}
+               </button>
+               <button
+                  onClick={() => setLoopEnabled(!loopEnabled)}
+                  className={`p-2 hover:bg-gray-800 rounded-full transition-colors ${loopEnabled ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`}
+                  title={loopEnabled ? "Loop Enabled" : "Loop Disabled"}
+               >
+                   <Repeat size={20} />
                </button>
                <div className="w-px h-6 bg-gray-800 mx-1"></div>
                <button 
@@ -187,10 +195,11 @@ function App() {
         <main className="flex-1 relative bg-gray-900 overflow-hidden flex flex-col">
             <div className="flex-1 relative overflow-auto flex items-center justify-center p-6 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-gray-800 via-gray-900 to-black">
                 {viewMode === 'preview' ? (
-                     <Preview 
-                        html={code.html} 
-                        css={code.css} 
-                        isPlaying={isPlaying} 
+                     <Preview
+                        html={code.html}
+                        css={code.css}
+                        isPlaying={isPlaying}
+                        loopEnabled={loopEnabled}
                         orientation={orientation}
                         onElementDrag={handleElementDrag}
                     />
