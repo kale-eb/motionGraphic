@@ -1,15 +1,18 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Clock, AlertCircle } from 'lucide-react';
 import { parseAnimationTracks, updateAnimationTiming } from '../utils/cssParser';
 
 interface TimelineProps {
   css: string;
   onUpdateCss: (newCss: string) => void;
+  currentTime?: number;
+  onSeek?: (time: number) => void;
 }
 
-const Timeline: React.FC<TimelineProps> = ({ css, onUpdateCss }) => {
+const Timeline: React.FC<TimelineProps> = ({ css, onUpdateCss, currentTime = 0, onSeek }) => {
   const tracks = useMemo(() => parseAnimationTracks(css), [css]);
-  
+  const [isDraggingPlayhead, setIsDraggingPlayhead] = useState(false);
+
   // Scale: 1 second = 100px
   const PX_PER_SEC = 100;
   const MAX_TIME = 20; 
@@ -42,6 +45,40 @@ const Timeline: React.FC<TimelineProps> = ({ css, onUpdateCss }) => {
       };
 
       const onMouseUp = () => {
+          window.removeEventListener('mousemove', onMouseMove);
+          window.removeEventListener('mouseup', onMouseUp);
+      };
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+  };
+
+  const handlePlayheadMouseDown = (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDraggingPlayhead(true);
+
+      const timelineRect = e.currentTarget.parentElement?.getBoundingClientRect();
+      if (!timelineRect) return;
+
+      const updatePlayhead = (clientX: number) => {
+          const offsetX = clientX - timelineRect.left;
+          const newTime = Math.max(0, Math.min(MAX_TIME, offsetX / PX_PER_SEC));
+          if (onSeek) {
+              onSeek(newTime);
+          }
+      };
+
+      // Update immediately on click
+      updatePlayhead(e.clientX);
+
+      const onMouseMove = (moveEvent: MouseEvent) => {
+          moveEvent.preventDefault();
+          updatePlayhead(moveEvent.clientX);
+      };
+
+      const onMouseUp = () => {
+          setIsDraggingPlayhead(false);
           window.removeEventListener('mousemove', onMouseMove);
           window.removeEventListener('mouseup', onMouseUp);
       };
@@ -85,6 +122,22 @@ const Timeline: React.FC<TimelineProps> = ({ css, onUpdateCss }) => {
                        {i}s
                    </div>
                ))}
+           </div>
+
+           {/* Playhead */}
+           <div
+               className="absolute top-0 bottom-0 z-30 cursor-ew-resize group"
+               style={{ left: `${currentTime * PX_PER_SEC}px` }}
+               onMouseDown={handlePlayheadMouseDown}
+           >
+               {/* Playhead Line */}
+               <div className="absolute inset-y-0 w-0.5 bg-red-500 group-hover:bg-red-400 transition-colors"></div>
+               {/* Playhead Head (triangle) */}
+               <div className="absolute -top-1 -left-2 w-4 h-4 rotate-45 transform origin-center bg-red-500 group-hover:bg-red-400 transition-colors" style={{ clipPath: 'polygon(0 0, 100% 0, 0 100%)' }}></div>
+               {/* Time Label */}
+               <div className="absolute -top-6 -left-6 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded font-mono opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                   {currentTime.toFixed(2)}s
+               </div>
            </div>
 
            {/* Track Bars */}

@@ -5,11 +5,12 @@ interface PreviewProps {
   html: string;
   css: string;
   isPlaying: boolean;
+  currentTime: number;
   orientation: 'landscape' | 'portrait';
   onElementDrag?: (selector: string, xPercent: number, yPercent: number) => void;
 }
 
-const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, onElementDrag }) => {
+const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, currentTime, orientation, onElementDrag }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Process CSS to force non-looping animations
@@ -28,6 +29,18 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [onElementDrag]);
+
+  // Handle scrubbing when currentTime changes
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !iframe.contentWindow) return;
+
+    // Send scrub command to iframe
+    iframe.contentWindow.postMessage({
+      type: 'SCRUB',
+      time: currentTime
+    }, '*');
+  }, [currentTime]);
 
   useEffect(() => {
     const doc = iframeRef.current?.contentDocument;
@@ -117,6 +130,24 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
                 const animControlStyle = document.getElementById('animation-control');
                 return !animControlStyle || animControlStyle.textContent.trim() === '';
               }
+
+              // Listen for scrub messages from parent
+              window.addEventListener('message', (event) => {
+                if (event.data.type === 'SCRUB') {
+                  const time = event.data.time;
+
+                  // Find all animated elements
+                  const elements = document.querySelectorAll('*');
+                  elements.forEach(el => {
+                    const style = window.getComputedStyle(el);
+                    if (style.animationName && style.animationName !== 'none') {
+                      // Scrub by setting animation-delay to negative value
+                      // This makes the animation jump to that point
+                      el.style.animationDelay = '-' + time + 's';
+                    }
+                  });
+                }
+              });
 
               let dragData = {
                 el: null,
@@ -326,7 +357,7 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
       `);
       doc.close();
     }
-  }, [html, processedCss, isPlaying]);
+  }, [html, processedCss, isPlaying, currentTime]);
 
   return (
     <div className={`transition-all duration-300 bg-black rounded-lg overflow-hidden shadow-2xl border border-gray-800 mx-auto relative ${

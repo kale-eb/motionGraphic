@@ -14,11 +14,18 @@ function App() {
   const [code, setCode] = useState<CodeState>({ html: INITIAL_HTML, css: INITIAL_CSS });
   const [messages, setMessages] = useState<Message[]>([]);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
   const [viewMode, setViewMode] = useState<'preview' | 'code'>('preview');
   const [isProcessing, setIsProcessing] = useState(false);
   const [chatSession, setChatSession] = useState<any>(null);
   const [isRendering, setIsRendering] = useState(false);
   const [orientation, setOrientation] = useState<'landscape' | 'portrait'>('landscape');
+
+  const handleSeek = (time: number) => {
+    setCurrentTime(time);
+    // Pause when scrubbing
+    setIsPlaying(false);
+  };
 
   // Initialize Chat Session
   useEffect(() => {
@@ -191,6 +198,7 @@ function App() {
                         html={code.html}
                         css={code.css}
                         isPlaying={isPlaying}
+                        currentTime={currentTime}
                         orientation={orientation}
                         onElementDrag={handleElementDrag}
                     />
@@ -224,7 +232,12 @@ function App() {
             
             {/* Timeline Editor (Only visible in Preview mode) */}
             {viewMode === 'preview' && (
-                <Timeline css={code.css} onUpdateCss={updateCss} />
+                <Timeline
+                    css={code.css}
+                    onUpdateCss={updateCss}
+                    currentTime={currentTime}
+                    onSeek={handleSeek}
+                />
             )}
         </main>
       </div>
