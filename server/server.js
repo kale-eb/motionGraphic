@@ -59,10 +59,10 @@ export const HTMLAnimation = () => {
     const indexPath = join(tempDir, 'index.jsx');
     const indexCode = `
 import React from 'react';
-import { Composition } from 'remotion';
+import { Composition, registerRoot } from 'remotion';
 import { HTMLAnimation } from './TempComposition';
 
-export const RemotionRoot = () => {
+const RemotionRoot = () => {
   return (
     <>
       <Composition
@@ -76,6 +76,8 @@ export const RemotionRoot = () => {
     </>
   );
 };
+
+registerRoot(RemotionRoot);
 `;
 
     await fs.writeFile(compositionPath, compositionCode);
