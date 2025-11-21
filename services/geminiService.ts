@@ -75,6 +75,18 @@ export const createChatSession = (currentCode: CodeState) => {
       - Set 'animation-iteration-count: 1' explicitly if needed, or use the shorthand with just duration and delay
       - Design animations to compose into a cohesive motion graphics sequence from 0-20 seconds
       - Elements should animate in and hold their final state (via forwards), not loop or reset
+
+      CSS POSITIONING & STRUCTURE REQUIREMENTS (CRITICAL):
+      - NEVER use 'Infinity', '-Infinity', 'NaN', or any invalid numeric values in CSS
+      - All positioning values (top, left, right, bottom) MUST be valid numbers with units (px, %, rem, etc.)
+      - Valid examples: "top: 50%", "left: 100px", "right: 20%"
+      - Invalid examples: "top: -Infinity%", "left: NaN", "right: Infinity"
+      - Every CSS class selector MUST have a corresponding HTML element
+      - If CSS references .highlight-text, HTML MUST contain an element with class="highlight-text"
+      - Do not create orphaned CSS rules - every rule must apply to an existing HTML element
+      - Use flexbox/grid for centering, OR use "50% + transform: translate(-50%, -50%)" pattern
+      - All absolute positioned elements must have valid, visible coordinates (typically 0-100% range)
+      - Test that all elements will be visible on screen (not positioned at -10000px or similar)
       `,
       tools: [{ functionDeclarations: [updateCodeTool] }],
     },
