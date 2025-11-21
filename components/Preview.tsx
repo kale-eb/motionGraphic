@@ -5,12 +5,11 @@ interface PreviewProps {
   html: string;
   css: string;
   isPlaying: boolean;
-  loopEnabled: boolean;
   orientation: 'landscape' | 'portrait';
   onElementDrag?: (selector: string, xPercent: number, yPercent: number) => void;
 }
 
-const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, loopEnabled, orientation, onElementDrag }) => {
+const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, onElementDrag }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Process CSS to force non-looping animations
@@ -112,39 +111,11 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, loopEnabled, or
           <body>
             ${html}
             <script>
-              // Loop state from React
-              const loopEnabled = ${loopEnabled};
-
               // Helper to check if animations are currently playing
               function areAnimationsPlaying() {
                 // Check if the animation-control style is active (pausing animations)
                 const animControlStyle = document.getElementById('animation-control');
                 return !animControlStyle || animControlStyle.textContent.trim() === '';
-              }
-
-              // Setup animation loop if enabled
-              if (loopEnabled) {
-                // Find all elements with animations
-                const animatedElements = Array.from(document.querySelectorAll('*')).filter(el => {
-                  const style = window.getComputedStyle(el);
-                  return style.animationName && style.animationName !== 'none';
-                });
-
-                // Listen for animation end and restart
-                animatedElements.forEach(el => {
-                  el.addEventListener('animationend', () => {
-                    if (loopEnabled && areAnimationsPlaying()) {
-                      // Force restart by removing and re-adding animation
-                      const computed = window.getComputedStyle(el);
-                      const animName = computed.animationName;
-                      el.style.animationName = 'none';
-                      // Use requestAnimationFrame to ensure the change is applied
-                      requestAnimationFrame(() => {
-                        el.style.animationName = animName;
-                      });
-                    }
-                  });
-                });
               }
 
               let dragData = {
@@ -355,7 +326,7 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, loopEnabled, or
       `);
       doc.close();
     }
-  }, [html, processedCss, isPlaying, loopEnabled]);
+  }, [html, processedCss, isPlaying]);
 
   return (
     <div className={`transition-all duration-300 bg-black rounded-lg overflow-hidden shadow-2xl border border-gray-800 mx-auto relative ${
