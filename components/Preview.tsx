@@ -27,6 +27,20 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
 
   useEffect(() => {
     const doc = iframeRef.current?.contentDocument;
+    if (!doc) return;
+
+    // Check if iframe is already initialized
+    const existingStyleTag = doc.getElementById('user-css');
+    const existingAnimationControl = doc.getElementById('animation-control');
+
+    if (existingStyleTag && existingAnimationControl) {
+      // Iframe already exists - just update the CSS without rewriting
+      existingStyleTag.textContent = css;
+      existingAnimationControl.textContent = !isPlaying ? `*, *::before, *::after { animation-play-state: paused !important; }` : '';
+      return;
+    }
+
+    // Initial render - write the full iframe
     if (doc) {
       doc.open();
       doc.write(`
@@ -36,10 +50,10 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
             <style>
               /* Reset */
               * { box-sizing: border-box; }
-              body { 
-                margin: 0; 
-                overflow: hidden; 
-                width: 100vw; 
+              body {
+                margin: 0;
+                overflow: hidden;
+                width: 100vw;
                 height: 100vh;
                 /* Prevent default touch actions to help with drag */
                 touch-action: none;
@@ -47,24 +61,26 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
                 user-select: none;
                 -webkit-user-select: none;
               }
-              
+
               /* UI for interactivity */
               .interactive-hover {
                  outline: 2px dashed #3b82f6;
                  cursor: grab !important; /* Force grab cursor over text */
                  z-index: 10000;
-                 position: relative; 
+                 position: relative;
               }
               .interactive-active {
                  outline: 2px solid #3b82f6;
                  cursor: grabbing !important;
                  z-index: 10000;
               }
-
-              /* User CSS */
+            </style>
+            <!-- User CSS (updatable) -->
+            <style id="user-css">
               ${css}
-              
-              /* Animation Control */
+            </style>
+            <!-- Animation Control (updatable) -->
+            <style id="animation-control">
               ${!isPlaying ? `*, *::before, *::after { animation-play-state: paused !important; }` : ''}
             </style>
           </head>
@@ -142,7 +158,7 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
                  let target = e.target;
                  // Prevent default to stop image ghosting / text selection
                  e.preventDefault();
-                 
+
                  if (target === document.body || target === document.documentElement) return;
 
                  // Calculate offset to prevent snapping to center
@@ -156,20 +172,26 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
                    shiftX,
                    shiftY
                  };
-                 
+
                  target.classList.remove('interactive-hover');
                  target.classList.add('interactive-active');
-                 
+
                  // Freeze width/height to prevent collapse when switching to absolute
-                 // We use computed style to get accurate dimensions including padding
-                 const computed = window.getComputedStyle(target);
                  target.style.width = rect.width + 'px';
                  target.style.height = rect.height + 'px';
-                 
+
+                 // FIX: Calculate position relative to the offset parent (containing block)
+                 // instead of viewport to prevent the jump
+                 const offsetParent = target.offsetParent || document.body;
+                 const parentRect = offsetParent.getBoundingClientRect();
+
+                 const relativeLeft = rect.left - parentRect.left;
+                 const relativeTop = rect.top - parentRect.top;
+
                  // Switch to absolute positioning immediately for drag
                  target.style.position = 'absolute';
-                 target.style.left = rect.left + 'px';
-                 target.style.top = rect.top + 'px';
+                 target.style.left = relativeLeft + 'px';
+                 target.style.top = relativeTop + 'px';
                  target.style.margin = '0';
                  // Remove transforms that might offset position during drag (we'll reset them in CSS later)
                  target.style.transform = 'none';
@@ -193,14 +215,18 @@ const Preview: React.FC<PreviewProps> = ({ html, css, isPlaying, orientation, on
                       const el = dragData.el;
                       el.classList.remove('interactive-active');
                       el.classList.add('interactive-hover');
-                      
-                      // Calculate final percentages relative to viewport
+
+                      // FIX: Calculate final percentages relative to the containing block
+                      // instead of viewport to prevent snap
                       const rect = el.getBoundingClientRect();
-                      const winW = window.innerWidth;
-                      const winH = window.innerHeight;
-                      
-                      const xPercent = (rect.left / winW) * 100;
-                      const yPercent = (rect.top / winH) * 100;
+                      const offsetParent = el.offsetParent || document.body;
+                      const parentRect = offsetParent.getBoundingClientRect();
+
+                      const relativeLeft = rect.left - parentRect.left;
+                      const relativeTop = rect.top - parentRect.top;
+
+                      const xPercent = (relativeLeft / parentRect.width) * 100;
+                      const yPercent = (relativeTop / parentRect.height) * 100;
 
                       // Only send message at the END of drag to prevent re-render loops
                       window.parent.postMessage({
