@@ -120,12 +120,49 @@ function App() {
     }
   };
 
-  const handleRenderVideo = () => {
+  const handleRenderVideo = async () => {
     setIsRendering(true);
-    setTimeout(() => {
-        setIsRendering(false);
-        alert("Animation sent to backend render farm! (Demo Only)");
-    }, 2000);
+
+    try {
+      // Call backend render API
+      const response = await fetch('http://localhost:3001/api/render-ffmpeg', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          html: code.html,
+          css: code.css,
+          duration: 20,
+          fps: 30,
+          width: orientation === 'landscape' ? 1920 : 1080,
+          height: orientation === 'landscape' ? 1080 : 1920
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to render video');
+      }
+
+      // Download the video
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'animation.webm';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      alert('Video rendered successfully! Check your downloads folder.');
+    } catch (error) {
+      console.error('Render error:', error);
+      alert(`Failed to render video: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsRendering(false);
+    }
   };
 
   // Handle updates from visual editor (Timeline or Dragging)
@@ -217,10 +254,10 @@ function App() {
                   className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium disabled:opacity-70"
                >
                    {isRendering ? (
-                       <>Checking Farm...</>
+                       <>Rendering Video...</>
                    ) : (
                        <>
-                        <Film size={16} /> Render MP4
+                        <Film size={16} /> Render Video
                        </>
                    )}
                </button>
